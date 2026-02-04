@@ -174,8 +174,8 @@ To achieve this in NextJS, we can create a simple (although kind of tricky to ge
 First just some type aliases for clarity:
 
 ```typescript
-// This is just a type alias for a middleware function, we expect it to take a request and response, and return a promise that resolves to a response
-type Middleware = (req: NextRequest, res: NextResponse) => Promise<NextResponse>; 
+// This is just a type alias for a middleware function, we expect it to take a request and return a promise that resolves to a response
+type Middleware = (req: NextRequest) => Promise<NextResponse>; 
 
 // This is a (technically "higher-order") function that takes a middleware and returns a new middleware
 type MiddlewareWrapper = (next: Middleware) => Middleware; 
@@ -261,15 +261,26 @@ function chain(wrappers: MiddlewareWrapper[]): Middleware {
   return wrappers.reduceRight((currentMiddleware, wrapper) => wrapper(currentMiddleware), finalMiddleware);
 }
 
-function somemiddleware(next:Middleware): Middleware {
+// Example 1: Middleware that doesn't modify the response
+function logRequest(next:Middleware): Middleware {
   return async function (request: NextRequest) {
-    // Do whatever you want, then call next or await the response and modify it
-    return await next(request);
+    console.log(`Request: ${request.method} ${request.url}`);
+    return next(request);
+  }
+};
+
+// Example 2: Middleware that modifies the response
+function addCustomHeader(next:Middleware): Middleware {
+  return async function (request: NextRequest) {
+    const response = await next(request);
+    response.headers.set('X-Custom-Header', 'MyValue');
+    return response;
   }
 };
 
 const middlewareChain = chain([
-  somemiddleware,
+  logRequest,
+  addCustomHeader,
   // Add more middleware wrappers here
 ]);
 
